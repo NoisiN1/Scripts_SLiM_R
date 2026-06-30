@@ -1,0 +1,88 @@
+// guanaco_proyeccion_abc.slim
+// Proyeccion de trayectorias justificada por ABC.
+// N y H se pasan por -define desde el posterior del ABC WF.
+// Misma logica que el ABC: WF, panel SNP fijo, caza como reduccion neta.
+// 8 puntos: 2005, 2023, +18, +36, +54, +72, +90, +108 anos (paso 18 = 4 gen).
+
+initialize() {
+    defineConstant("MU", 1.2e-8);
+    initializeMutationRate(MU);
+    initializeRecombinationRate(1.2e-8);
+    initializeMutationType("m1", 0.5, "f", 0.0);
+    m1.convertToSubstitution = F;
+    initializeGenomicElementType("g1", m1, 1.0);
+    initializeGenomicElement(g1, 0, 99999);
+
+    if (!exists("N")) defineConstant("N", 843);
+    if (!exists("H")) defineConstant("H", 0.21);
+    if (!exists("REP")) defineConstant("REP", 0);
+    if (!exists("OUTFILE")) defineConstant("OUTFILE", "proyeccion.txt");
+    defineConstant("FLOOR", 30);
+    defineConstant("NSAMPLE", 20);
+}
+
+1 early() {
+    sim.addSubpop("p1", N);
+    defineGlobal("PI_VALS", c());
+    defineGlobal("HE_VALS", c());
+    defineGlobal("HO_VALS", c());
+    defineGlobal("TAJD_VALS", c());
+}
+
+// Caza desde 2005 (tick 9001) hasta +108 anos (tick 9029)
+20001:20029 early() {
+    removed = asInteger(p1.individualCount * H);
+    newSize = p1.individualCount - removed;
+    if (newSize < FLOOR) newSize = FLOOR;
+    p1.setSubpopulationSize(asInteger(newSize));
+}
+
+function (void)muestrear(void) {
+    n = min(NSAMPLE, p1.individualCount);
+    inds = sample(p1.individuals, n);
+    haps = inds.haplosomes;
+    pi = calcPi(haps);
+    tajd = calcTajimasD(haps);
+    if (isNULL(tajd) | isNAN(tajd)) tajd = 0.0;
+
+    // Panel SNP fijo en 2005
+    if (community.tick == 20001) {
+        muts = unique(haps.mutations);
+        frecs = haps.mutationFrequenciesInHaplosomes(muts);
+        poli = muts[(frecs > 0) & (frecs < 1)];
+        sim.setValue("panel_snps", poli);
+    } else {
+        poli = sim.getValue("panel_snps");
+    }
+    nSNP = size(poli);
+
+    if (nSNP > 0) {
+        fp = haps.mutationFrequenciesInHaplosomes(poli);
+        he = mean(2 * fp * (1 - fp));
+        ho_indiv = sapply(inds, "calcPairHeterozygosity(applyValue.haplosomes[0], applyValue.haplosomes[1]) * 1e5 / nSNP;");
+        ho = mean(ho_indiv);
+    } else { he = 0.0; ho = 0.0; }
+
+    defineGlobal("PI_VALS", c(PI_VALS, pi));
+    defineGlobal("HE_VALS", c(HE_VALS, he));
+    defineGlobal("HO_VALS", c(HO_VALS, ho));
+    defineGlobal("TAJD_VALS", c(TAJD_VALS, tajd));
+}
+
+20001 late() { muestrear(); }
+20005 late() { muestrear(); }
+20009 late() { muestrear(); }
+20013 late() { muestrear(); }
+20017 late() { muestrear(); }
+20021 late() { muestrear(); }
+20025 late() { muestrear(); }
+20029 late() {
+    muestrear();
+    linea = REP + "\t" + N + "\t" + H + "\t" +
+        paste(PI_VALS, sep="\t") + "\t" +
+        paste(HE_VALS, sep="\t") + "\t" +
+        paste(HO_VALS, sep="\t") + "\t" +
+        paste(TAJD_VALS, sep="\t");
+    writeFile(OUTFILE, linea, append=T);
+    sim.simulationFinished();
+}

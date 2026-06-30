@@ -1,0 +1,102 @@
+// guanaco_abc.slim
+// Modelo para ABC: estima N (Ne real) e intensidad de caza histórica (H).
+// Ajuste contra 4 estadísticos en 2005 y 2023: He, Ho, Tajima's D, Ne.
+// Estadísticos menos correlacionados => mejor identificabilidad de N vs H.
+// Sin proyección futura. WF puro. gen = 4.5 años.
+//
+// Uso: slim -define "N=900" -define "H=0.18" -define "REP=1" -define "OUTFILE='ref.txt'" guanaco_abc.slim
+//
+// Salida (1 línea, 8 estadísticos + 2 parámetros):
+//   N  H  He_2005 He_2023  Ho_2005 Ho_2023  TajD_2005 TajD_2023  Ne_2005 Ne_2023
+
+initialize() {
+    defineConstant("MU", 1.2e-8);
+    initializeMutationRate(MU);
+    initializeRecombinationRate(1.2e-8);
+    initializeMutationType("m1", 0.5, "f", 0.0); // neutral
+    initializeGenomicElementType("g1", m1, 1.0);
+    initializeGenomicElement(g1, 0, 99999);      // 100 kb
+
+    // CRUCIAL: Evitar que las mutaciones fijadas se borren
+    m1.convertToSubstitution = F;
+
+    if (!exists("N")) defineConstant("N", 900);
+    if (!exists("H")) defineConstant("H", 0.18);
+    if (!exists("REP")) defineConstant("REP", 0);
+    if (!exists("OUTFILE")) defineConstant("OUTFILE", "referencia_abc.txt");
+
+    defineConstant("FLOOR", 30);
+    defineConstant("NSAMPLE", 20);
+    defineConstant("BURN", 20000); // 10 * N_max
+}
+
+1 early() {
+    sim.addSubpop("p1", N);
+    defineGlobal("HE_VALS", c());
+    defineGlobal("HO_VALS", c());
+    defineGlobal("TAJD_VALS", c());
+    defineGlobal("NE_VALS", c());
+}
+
+function (void)takeSample(void) {
+    n = min(NSAMPLE, p1.individualCount);
+    inds = sample(p1.individuals, n);
+    haps = inds.haplosomes;
+
+    // Tajima's D (forma del espectro de frecuencias; firma del bottleneck)
+    tajd = calcTajimasD(haps);
+    if (isNULL(tajd) | isNAN(tajd)) tajd = 0.0;
+
+    // Ne emergente (heterocigosidad esperada de toda la población / 4mu)
+    ne = calcHeterozygosity(p1.haplosomes) / (4 * MU);
+
+    // Lógica de panel de SNPs fijo (ddRADseq)
+    if (community.tick == 20001) {
+        // En 2005 se "descubren" los SNPs
+        muts = unique(haps.mutations);
+        freqs = haps.mutationFrequenciesInHaplosomes(muts);
+        poly = muts[(freqs > 0) & (freqs < 1)];
+        sim.setValue("panel_snps", poly);
+    } else {
+        // En 2023 se evalúa el mismo panel
+        poly = sim.getValue("panel_snps");
+    }
+
+    nSNP = size(poly);
+
+    if (nSNP > 0) {
+        fp = haps.mutationFrequenciesInHaplosomes(poly);
+        he = mean(2 * fp * (1 - fp));
+        ho_indiv = sapply(inds,
+            "calcPairHeterozygosity(applyValue.haplosomes[0], applyValue.haplosomes[1]) * 1e5 / nSNP;");
+        ho = mean(ho_indiv);
+    } else {
+        he = 0.0;
+        ho = 0.0;
+    }
+
+    defineGlobal("HE_VALS",   c(HE_VALS, he));
+    defineGlobal("HO_VALS",   c(HO_VALS, ho));
+    defineGlobal("TAJD_VALS", c(TAJD_VALS, tajd));
+    defineGlobal("NE_VALS",   c(NE_VALS, ne));
+}
+
+// Caza durante 5 generaciones tras el burn-in
+s1 20001:20005 early() {
+    removed = asInteger(p1.individualCount * H);
+    newSize = p1.individualCount - removed;
+    if (newSize < FLOOR) newSize = FLOOR;
+    p1.setSubpopulationSize(asInteger(newSize));
+}
+
+s2 20001 late() { takeSample(); }  // 2005
+s3 20005 late() {
+    takeSample();                   // 2023
+    line = N + "\t" + H + "\t" +
+        paste(HE_VALS, sep="\t") + "\t" +
+        paste(HO_VALS, sep="\t") + "\t" +
+        paste(TAJD_VALS, sep="\t") + "\t" +
+        paste(NE_VALS, sep="\t");
+    writeFile(OUTFILE, line, append=T);
+    sim.simulationFinished();
+}

@@ -102,7 +102,7 @@ reported in:
 
 ## Software requirements
 
-- **SLiM 5.1** (Haller & Messer, 2025)
+- **SLiM 5.1** (Haller et al., 2026)
 - **R ≥ 4.0** with packages: `abc`, `ggplot2`, `cowplot`
 - **Bash** + GNU coreutils + `xargs` (for parallel execution)
 

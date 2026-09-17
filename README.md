@@ -1,6 +1,6 @@
 # SLiM forward simulations + ABC — Guanaco harvest PVA (Russfin, Tierra del Fuego)
 
-Scripts to reproduce the forward genetic simulations (SLiM 4), Approximate
+Scripts to reproduce the forward genetic simulations (SLiM 5.1), Approximate
 Bayesian Computation (ABC) inference, and Population Viability Analysis (PVA)
 reported in:
 
@@ -49,7 +49,7 @@ reported in:
 
 | Component | Implementation |
 |-----------|---------------|
-| Framework | SLiM 4, non-Wright–Fisher (nonWF) |
+| Framework | SLiM 5.1, non-Wright–Fisher (nonWF) |
 | Sex structure | Two sexes (1:1 ratio) |
 | Mating system | Discrete harem: 1 territorial ♂ + up to 10 ♀ |
 | Offspring | Poisson(λ = 1.8) per ♀ per generation |
@@ -102,7 +102,7 @@ reported in:
 
 ## Software requirements
 
-- **SLiM 4** (Haller & Messer, 2019)
+- **SLiM 5.1** (Haller & Messer, 2025)
 - **R ≥ 4.0** with packages: `abc`, `ggplot2`, `cowplot`
 - **Bash** + GNU coreutils + `xargs` (for parallel execution)
 

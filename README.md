@@ -95,7 +95,7 @@ reported in:
 | Fig. 5 — Projected genetic diversity (π, Ho, He) | `03_figures/fig_pva_main.R` |
 | Fig. S2 — ABC model selection (Bayes factors + GOF) | `01_abc/abc_analisis_completo.R` |
 | Fig. S3 — Posterior distributions (N, H) | `01_abc/abc_analisis_completo.R` |
-| Table S3 — ABC priors and parameters | 01_abc/guanaco_abc_harem_v2.slim` |
+| Table S3 — ABC priors and parameters | `01_abc/guanaco_abc_harem_v2.slim` |
 | Table S4 — Cross-validation errors | `01_abc/abc_analisis_completo.R` |
 
 ## Software requirements

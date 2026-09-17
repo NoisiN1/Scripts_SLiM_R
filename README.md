@@ -27,7 +27,7 @@ reported in:
 │   └── run_pva_full.sh                  Parallel runner: 45,000 sims (5 k × 9 scenarios)
 │
 ├── 03_figures/                      Figures and tables
-│   └── fig_pva_main.R                 Fig. X — projected π, Ho, He trajectories
+│   └── fig_pva_main.R                 Fig. 5 — projected π, Ho, He trajectories
 │
 ├── 00_bioinformatics_pipeline.md
 ├── KNOWN_ISSUES.md

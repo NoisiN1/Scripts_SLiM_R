@@ -40,7 +40,7 @@ reported in:
 
 | Parameter | Value | Reference / Notes |
 | :--- | :--- | :--- |
-| Mutation rate (μ) | 1.2 × 10⁻⁸ /site/generation | ([Fan et al. 2020](https://doi.org/10.1186/s13059-020-02080-6)) |
+| Mutation rate (μ) | 1.2 × 10⁻⁸ /site/generation | [Fan et al. 2020](https://doi.org/10.1186/s13059-020-02080-6) |
 | Recombination rate (ρ) | 1.2 × 10⁻⁸ /site/generation | Set equal to μ (neutral) |
 | Simulated region | 100,000 bp | Neutral, infinite-sites |
 | Generation time | 4.5 years | [Leggieri et al. 2024](https://doi.org/10.1093/biolinnean/blae087) |

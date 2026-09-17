@@ -29,7 +29,7 @@ reported in:
 ├── 03_figures/                      Figures and tables
 │   └── fig_pva_main.R                 Fig. X — projected π, Ho, He trajectories
 │
-├── .gitignore
+├── 00_bioinformatics_pipeline.md
 ├── KNOWN_ISSUES.md
 └── README.md
 ```

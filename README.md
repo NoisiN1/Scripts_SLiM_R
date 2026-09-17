@@ -5,9 +5,7 @@ Bayesian Computation (ABC) inference, and Population Viability Analysis (PVA)
 reported in:
 
 > Peña-Monroy A., Flores-Morales G., Leggieri L., Soto N., Quilodrán C. S.,
-> Orozco-terWengel P. & Marín J. C. *Empirical stability and projected
-> fragility under regulated harvest: an 18-year genomic test in the largest
-> insular guanaco population.* Scientific Reports (in revision).
+> Orozco-terWengel P. & Marín J. C. *Eighteen years of regulated harvest do not erode genomic diversity in an insular guanaco population.* Scientific Reports (in revision).
 
 ## Repository layout
 

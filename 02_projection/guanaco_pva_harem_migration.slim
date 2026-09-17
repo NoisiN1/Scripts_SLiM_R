@@ -1,0 +1,167 @@
+// guanaco_pva_harem_migration.slim
+// PVA nonWF harem discreto + MIGRACION BIDIRECCIONAL con source pool
+
+initialize() {
+    initializeSLiMModelType("nonWF");
+    initializeSex();
+    defineConstant("MU", 1.2e-8);  // camelidos SA (manuscrito ref [66])
+    initializeMutationRate(MU);
+    initializeRecombinationRate(1.2e-8);
+    initializeMutationType("m1", 0.5, "f", 0.0);
+    m1.convertToSubstitution = F;
+    initializeGenomicElementType("g1", m1, 1.0);
+    initializeGenomicElement(g1, 0, 99999);
+
+    if (!exists("N"))       defineConstant("N", 800);
+    if (!exists("H_HIST"))  defineConstant("H_HIST", 0.21);
+    if (!exists("H_FUT"))   defineConstant("H_FUT", 0.21);
+    if (!exists("M_FUT"))   defineConstant("M_FUT", 0.01);
+    if (!exists("REP"))     defineConstant("REP", 0);
+    if (!exists("SCEN"))    defineConstant("SCEN", "actual_m01");
+    if (!exists("OUTFILE")) defineConstant("OUTFILE", "pva_migration.txt");
+
+    defineConstant("K", N);
+    defineConstant("BURN", 20000);
+    defineConstant("GEN_2005", BURN + 1);
+    defineConstant("GEN_2023", BURN + 5);
+    defineConstant("GEN_END", BURN + 5 + 24);  // 24 gen x 4.5 anios = 108 anios
+    defineConstant("NSAMPLE", 20);
+    defineConstant("FECUN", 1.8);
+    defineConstant("HAREM_MAX", 10);
+}
+
+reproduction(NULL, "F") {
+    if (individual.tag < 0) return;
+    males_all = subpop.subsetIndividuals(sex="M");
+    if (size(males_all) == 0) return;
+    if (individual.tag >= size(males_all)) return;
+    mate = males_all[individual.tag];
+    n_off = rpois(1, FECUN);
+    for (i in seqLen(n_off)) {
+        subpop.addCrossed(individual, mate, count=1);
+    }
+}
+
+1 first() {
+    sim.addSubpop("p1", K);
+    sim.addSubpop("p2", K);
+    p1.individuals.tag = -1;
+    p2.individuals.tag = -1;
+    defineGlobal("TRAJ_GEN", c());
+    defineGlobal("TRAJ_NE", c());
+    defineGlobal("TRAJ_HE", c());
+    defineGlobal("TRAJ_HO", c());
+    defineGlobal("TRAJ_PI", c());
+    defineGlobal("TRAJ_NC", c());
+    defineGlobal("TRAJ_NM", c());
+    defineGlobal("TRAJ_NT", c());
+}
+
+first() {
+    if (community.tick == 1) return;
+    for (subpop in sim.subpopulations) {
+        males = subpop.subsetIndividuals(sex="M");
+        females = subpop.subsetIndividuals(sex="F");
+        if (size(males) == 0 | size(females) == 0) next;
+        subpop.individuals.tag = -1;
+        n_needed = asInteger(ceil(size(females) / HAREM_MAX));
+        n_territorial = min(n_needed, size(males));
+        female_perm = sample(females, size(females));
+        tags = asInteger(seqLen(size(female_perm)) % n_territorial);
+        female_perm.tag = tags;
+        if (subpop == p1) defineGlobal("N_TERR_CURRENT", n_territorial);
+    }
+}
+
+early() {
+    p1.fitnessScaling = K / p1.individualCount;
+    p2.fitnessScaling = K / p2.individualCount;
+}
+
+(GEN_2023+1):GEN_END early() {
+    if (M_FUT <= 0) return;
+    n_migrants = asInteger(K * M_FUT);
+    if (n_migrants < 1) return;
+    if (p1.individualCount > n_migrants) {
+        migrants_out = sample(p1.individuals, n_migrants);
+        for (m in migrants_out) { p2.takeMigrants(m); }
+    }
+    if (p2.individualCount > n_migrants) {
+        migrants_in = sample(p2.individuals, n_migrants);
+        for (m in migrants_in) { p1.takeMigrants(m); }
+    }
+}
+
+GEN_2005:GEN_2023 late() {
+    males = p1.subsetIndividuals(sex="M");
+    n_harvest = asInteger(size(males) * H_HIST);
+    if (n_harvest > 0 & size(males) > n_harvest) {
+        harvested = sample(males, n_harvest);
+        sim.killIndividuals(harvested);
+    }
+    trackStats();
+}
+
+(GEN_2023+1):GEN_END late() {
+    males = p1.subsetIndividuals(sex="M");
+    n_harvest = asInteger(size(males) * H_FUT);
+    if (n_harvest > 0 & size(males) > n_harvest) {
+        harvested = sample(males, n_harvest);
+        sim.killIndividuals(harvested);
+    }
+    trackStats();
+}
+
+GEN_END late() {
+    for (i in seqAlong(TRAJ_GEN)) {
+        line = SCEN + "\t" + REP + "\t" + K + "\t" + H_HIST + "\t" + H_FUT + "\t" + M_FUT + "\t" +
+               TRAJ_GEN[i] + "\t" + TRAJ_NC[i] + "\t" + TRAJ_NM[i] + "\t" + TRAJ_NT[i] + "\t" +
+               TRAJ_NE[i] + "\t" + TRAJ_HE[i] + "\t" + TRAJ_HO[i] + "\t" + TRAJ_PI[i];
+        writeFile(OUTFILE, line, append=T);
+    }
+    sim.simulationFinished();
+}
+
+function (void)trackStats(void) {
+    nc = p1.individualCount;
+    males = p1.subsetIndividuals(sex="M");
+    nm = size(males);
+    nt = exists("N_TERR_CURRENT") ? N_TERR_CURRENT else 0;
+    gen_rel = community.tick - GEN_2023;
+    if (nc < 5 | nm < 2) {
+        defineGlobal("TRAJ_GEN", c(TRAJ_GEN, gen_rel));
+        defineGlobal("TRAJ_NC",  c(TRAJ_NC, nc));
+        defineGlobal("TRAJ_NM",  c(TRAJ_NM, nm));
+        defineGlobal("TRAJ_NT",  c(TRAJ_NT, nt));
+        defineGlobal("TRAJ_NE",  c(TRAJ_NE, 0.0));
+        defineGlobal("TRAJ_HE",  c(TRAJ_HE, 0.0));
+        defineGlobal("TRAJ_HO",  c(TRAJ_HO, 0.0));
+        defineGlobal("TRAJ_PI",  c(TRAJ_PI, 0.0));
+        return;
+    }
+    n = min(NSAMPLE, nc);
+    inds = sample(p1.individuals, n);
+    haps = inds.haplosomes;
+    pi_total = calcHeterozygosity(p1.haplosomes);
+    ne = pi_total / (4 * MU);
+    pi_sample = calcHeterozygosity(haps);
+    muts = unique(haps.mutations);
+    if (size(muts) > 0) {
+        fp = haps.mutationFrequenciesInHaplosomes(muts);
+        nSNP = size(muts);
+        he = mean(2 * fp * (1 - fp));
+        ho_indiv = sapply(inds,
+            "calcPairHeterozygosity(applyValue.haplosomes[0], applyValue.haplosomes[1]) * 1e5 / nSNP;");
+        ho = mean(ho_indiv);
+    } else {
+        he = 0.0; ho = 0.0;
+    }
+    defineGlobal("TRAJ_GEN", c(TRAJ_GEN, gen_rel));
+    defineGlobal("TRAJ_NC",  c(TRAJ_NC, nc));
+    defineGlobal("TRAJ_NM",  c(TRAJ_NM, nm));
+    defineGlobal("TRAJ_NT",  c(TRAJ_NT, nt));
+    defineGlobal("TRAJ_NE",  c(TRAJ_NE, ne));
+    defineGlobal("TRAJ_HE",  c(TRAJ_HE, he));
+    defineGlobal("TRAJ_HO",  c(TRAJ_HO, ho));
+    defineGlobal("TRAJ_PI",  c(TRAJ_PI, pi_sample));
+}

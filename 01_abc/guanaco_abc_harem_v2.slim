@@ -1,0 +1,171 @@
+// guanaco_abc_harem_v2.slim
+// ABC nonWF con HAREM DISCRETO (1 macho + hasta 10 hembras)
+// BURN ADAPTATIVO: 10*N para asegurar equilibrio mut-drift
+// mu=1.2e-8 (camelidos SA, ref [66] manuscrito)
+//
+// Modelo: 2 poblaciones (p1=Russfin, p2=source pool)
+// M fijo por escenario (0, 0.01, 0.02, 0.05) - no se estima
+//
+// Output: 8 stats + 4 parametros (compatible con formato ABC actual)
+//
+// Uso:
+//   slim -d "N=1500" -d "H=0.20" -d "M=0.0" -d "NSOURCE=2000" \
+//        -d "REP=1" -d "OUTFILE='ref.txt'" guanaco_abc_harem_v2.slim
+
+initialize() {
+    initializeSLiMModelType("nonWF");
+    initializeSex();
+    defineConstant("MU", 1.2e-8);  // camelidos SA (manuscrito ref [66])
+    initializeMutationRate(MU);
+    initializeRecombinationRate(1.2e-8);
+    initializeMutationType("m1", 0.5, "f", 0.0);
+    m1.convertToSubstitution = F;
+    initializeGenomicElementType("g1", m1, 1.0);
+    initializeGenomicElement(g1, 0, 99999);
+
+    if (!exists("N"))       defineConstant("N", 1500);
+    if (!exists("H"))       defineConstant("H", 0.20);
+    if (!exists("M"))       defineConstant("M", 0.0);
+    if (!exists("NSOURCE")) defineConstant("NSOURCE", 2000);
+    if (!exists("REP"))     defineConstant("REP", 0);
+    if (!exists("OUTFILE")) defineConstant("OUTFILE", "referencia_abc_harem.txt");
+
+    defineConstant("K", N);
+    defineConstant("K_SRC", NSOURCE);
+    // BURN ADAPTATIVO: 10 x max(K, K_SRC) para equilibrio mut-drift adecuado en ambas pops
+    defineConstant("BURN", 10 * max(c(K, K_SRC)));
+    defineConstant("GEN_2005", BURN + 1);
+    defineConstant("GEN_2023", BURN + 5);
+    defineConstant("NSAMPLE", 20);
+    defineConstant("FECUN", 1.8);
+    defineConstant("HAREM_MAX", 10);
+}
+
+reproduction(NULL, "F") {
+    if (individual.tag < 0) return;
+    males_all = subpop.subsetIndividuals(sex="M");
+    if (size(males_all) == 0) return;
+    if (individual.tag >= size(males_all)) return;
+    mate = males_all[individual.tag];
+    n_off = rpois(1, FECUN);
+    for (i in seqLen(n_off)) {
+        subpop.addCrossed(individual, mate, count=1);
+    }
+}
+
+1 first() {
+    sim.addSubpop("p1", K);
+    sim.addSubpop("p2", K_SRC);
+    p1.individuals.tag = -1;
+    p2.individuals.tag = -1;
+    // Registrar eventos dinamicos que dependen de BURN adaptativo
+    community.registerLateEvent("s1", "{ sampleAndFinish2005(); }", GEN_2005, GEN_2005);
+    community.registerLateEvent("s2", "{ sampleAndFinish2023(); }", GEN_2023, GEN_2023);
+    community.registerLateEvent("s3", "{ harvestHist(); }", GEN_2005, GEN_2023);
+    // Migracion durante todo (excepto tick 1) hasta GEN_2023
+    community.registerEarlyEvent("s4", "{ doMigration(); }", 2, GEN_2023);
+}
+
+first() {
+    if (community.tick == 1) return;
+    for (subpop in sim.subpopulations) {
+        males = subpop.subsetIndividuals(sex="M");
+        females = subpop.subsetIndividuals(sex="F");
+        if (size(males) == 0 | size(females) == 0) next;
+        subpop.individuals.tag = -1;
+        n_needed = asInteger(ceil(size(females) / HAREM_MAX));
+        n_territorial = min(n_needed, size(males));
+        female_perm = sample(females, size(females));
+        tags = asInteger(seqLen(size(female_perm)) % n_territorial);
+        female_perm.tag = tags;
+    }
+}
+
+early() {
+    p1.fitnessScaling = K / p1.individualCount;
+    p2.fitnessScaling = K_SRC / p2.individualCount;
+}
+
+// Funcion: migracion bidireccional
+function (void)doMigration(void) {
+    if (M <= 0) return;
+    n_migrants_out = asInteger(K * M);
+    n_migrants_in = asInteger(K_SRC * M);
+    if (n_migrants_out < 1 & n_migrants_in < 1) return;
+    if (p1.individualCount > n_migrants_out & n_migrants_out >= 1) {
+        migrants_out = sample(p1.individuals, n_migrants_out);
+        for (mm in migrants_out) { p2.takeMigrants(mm); }
+    }
+    if (p2.individualCount > n_migrants_in & n_migrants_in >= 1) {
+        migrants_in = sample(p2.individuals, n_migrants_in);
+        for (mm in migrants_in) { p1.takeMigrants(mm); }
+    }
+}
+
+// Funcion: harvest historico 2005-2023 (solo p1)
+function (void)harvestHist(void) {
+    males = p1.subsetIndividuals(sex="M");
+    n_harvest = asInteger(size(males) * H);
+    if (n_harvest > 0 & size(males) > n_harvest) {
+        harvested = sample(males, n_harvest);
+        sim.killIndividuals(harvested);
+    }
+}
+
+// Sampling 2005: definir panel de SNPs
+function (void)sampleAndFinish2005(void) {
+    takeSample("2005");
+}
+
+// Sampling 2023: escribir output y finalizar
+function (void)sampleAndFinish2023(void) {
+    takeSample("2023");
+    line = N + "\t" + H + "\t" + M + "\t" + NSOURCE + "\t" +
+           HE_2005 + "\t" + HE_2023 + "\t" +
+           HO_2005 + "\t" + HO_2023 + "\t" +
+           TAJD_2005 + "\t" + TAJD_2023 + "\t" +
+           NE_2005 + "\t" + NE_2023;
+    writeFile(OUTFILE, line, append=T);
+    sim.simulationFinished();
+}
+
+function (void)takeSample(string$ year) {
+    nc = p1.individualCount;
+    if (nc < 5) {
+        defineGlobal("HE_" + year, 0.0);
+        defineGlobal("HO_" + year, 0.0);
+        defineGlobal("TAJD_" + year, 0.0);
+        defineGlobal("NE_" + year, 0.0);
+        return;
+    }
+    n = min(NSAMPLE, nc);
+    inds = sample(p1.individuals, n);
+    haps = inds.haplosomes;
+    ne = calcHeterozygosity(p1.haplosomes) / (4 * MU);
+    tajd = calcTajimasD(haps);
+    if (isNULL(tajd) | isNAN(tajd)) tajd = 0.0;
+
+    if (year == "2005") {
+        muts = unique(haps.mutations);
+        freqs = haps.mutationFrequenciesInHaplosomes(muts);
+        poly = muts[(freqs > 0) & (freqs < 1)];
+        sim.setValue("panel_snps", poly);
+    } else {
+        poly = sim.getValue("panel_snps");
+    }
+
+    nSNP = size(poly);
+    if (nSNP > 0) {
+        fp = haps.mutationFrequenciesInHaplosomes(poly);
+        he = mean(2 * fp * (1 - fp));
+        ho_indiv = sapply(inds,
+            "calcPairHeterozygosity(applyValue.haplosomes[0], applyValue.haplosomes[1]) * 1e5 / nSNP;");
+        ho = mean(ho_indiv);
+    } else {
+        he = 0.0; ho = 0.0;
+    }
+    defineGlobal("HE_" + year, he);
+    defineGlobal("HO_" + year, ho);
+    defineGlobal("TAJD_" + year, tajd);
+    defineGlobal("NE_" + year, ne);
+}

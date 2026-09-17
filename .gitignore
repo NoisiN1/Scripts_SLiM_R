@@ -1,0 +1,14 @@
+# Outputs (large simulation files)
+*.txt
+!posterior_N_samples.txt
+*.rds
+*.tar.gz
+
+# OS
+.DS_Store
+Thumbs.db
+
+# R
+.Rhistory
+.RData
+*.Rproj.user

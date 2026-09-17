@@ -95,10 +95,8 @@ reported in:
 | Fig. 5 — Projected genetic diversity (π, Ho, He) | `03_figures/fig_pva_main.R` |
 | Fig. S2 — ABC model selection (Bayes factors + GOF) | `01_abc/abc_analisis_completo.R` |
 | Fig. S3 — Posterior distributions (N, H) | `01_abc/abc_analisis_completo.R` |
-| Table SX — ABC priors and parameters | (documented in `01_abc/guanaco_abc_harem_v2.slim`) |
-| Table SX — Model selection results | `01_abc/abc_analisis_completo.R` |
-| Table SX — Cross-validation errors | `01_abc/abc_analisis_completo.R` |
-| Table SX — PVA model specification | (documented in `02_projection/guanaco_pva_harem_migration.slim`) |
+| Table S3 — ABC priors and parameters | (documented in `01_abc/guanaco_abc_harem_v2.slim`) |
+| Table S4 — Cross-validation errors | `01_abc/abc_analisis_completo.R` |
 
 ## Software requirements
 

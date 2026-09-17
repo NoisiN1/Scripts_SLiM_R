@@ -40,7 +40,7 @@ reported in:
 
 | Parameter | Value | Source |
 |-----------|-------|--------|
-| Mutation rate (μ) | 1.2 × 10⁻⁸ /site/generation | South American camelids (Marín et al.) |
+| Mutation rate (μ) | 1.2 × 10⁻⁸ /site/generation | South American camelids (Fan et al. 2022) |
 | Recombination rate (ρ) | 1.2 × 10⁻⁸ /site/generation | Set equal to μ (neutral) |
 | Simulated region | 100,000 bp | Neutral, infinite-sites |
 | Generation time | 4.5 years | Leggieri et al. (2024) |

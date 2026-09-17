@@ -104,6 +104,9 @@ reported in:
 - **R ≥ 4.0** with packages: `abc`, `ggplot2`, `cowplot`
 - **Bash** + GNU coreutils + `xargs` (for parallel execution)
 
+## The variant data for this study have been deposited in the European Variation Archive (EVA)
+EMBL-EBI under accession number PRJEB115722 (https://www.ebi.ac.uk/eva/?eva-study=PRJEB115722)
+
 ## Known issues
 
 See `KNOWN_ISSUES.md` for hardcoded paths that need adjustment before the
